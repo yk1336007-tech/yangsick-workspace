@@ -181,13 +181,13 @@ textarea.input{resize:vertical;min-height:42px}
 @media(max-width:768px){
 .app{flex-direction:column;height:100vh}
 .sidebar{display:none}
-.mobile-nav{display:flex!important}
-.content{flex:1;padding:14px;padding-bottom:70px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mobile-nav{display:flex!important;bottom:calc(env(safe-area-inset-bottom) + 16px);box-shadow:0 -2px 8px rgba(0,0,0,0.06)}
+.content{flex:1;padding:14px;padding-bottom:90px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .insp-grid,.ai-grid,.learn-grid,.bill-stats{grid-template-columns:1fr}
 }
-.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);z-index:1000;padding:6px 4px calc(6px + env(safe-area-inset-bottom));overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.mobile-nav{display:none;position:fixed;left:8px;right:8px;background:#fff;border:1px solid var(--border);border-radius:16px;z-index:1000;padding:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 -4px 12px rgba(0,0,0,0.08)}
 .mobile-nav::-webkit-scrollbar{display:none}
-.mobile-nav-item{flex-shrink:0;padding:6px 12px;font-size:11px;color:var(--text-light);border:none;background:none;cursor:pointer;white-space:nowrap;font-family:inherit;border-radius:8px;transition:all 0.15s}
+.mobile-nav-item{flex-shrink:0;padding:10px 16px;font-size:13px;color:var(--text-light);border:none;background:none;cursor:pointer;white-space:nowrap;font-family:inherit;border-radius:10px;transition:all 0.15s;min-width:64px;min-height:44px}
 .mobile-nav-item.active{color:var(--primary);background:var(--primary-light);font-weight:600}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:2px}
 </style>
@@ -361,10 +361,10 @@ function switchPage(p){
 // 移动端导航
 const mobileNavItems=[{page:'plan',label:'📋计划'},{page:'inspiration',label:'💡选题'},{page:'hot',label:'🔥热点'},{page:'review',label:'📊复盘'},{page:'ai',label:'🤖AI'},{page:'luca',label:'🔬拆解'},{page:'manual',label:'📖手册'},{page:'bill',label:'💰记账'},{page:'memo',label:'📝备忘'},{page:'learn',label:'📚学习'},{page:'dayreview',label:'📊日复盘'},{page:'finance',label:'💰财务'}];
 function initMobileNav(){const nav=document.getElementById('mobileNav');nav.innerHTML=mobileNavItems.map(i=>`<button class="mobile-nav-item" data-page="${i.page}" onclick="switchPage('${i.page}')">${i.label}</button>`).join('');}
-const SK='wbs_v3_';let today=new Date().toISOString().slice(0,10);
+const SK='wbs_v3_';const BILL_KEY='wbs_bills_global';let today=new Date().toISOString().slice(0,10);
 let state={date:today,mainTasks:[],subTasks:[],subInitDate:'',memos:[],dataItems:[],review:'',savedQuotes:[],quoteIdx:0,quoteDate:'',inspirationDate:'',inspirationIdx:[],bills:[],billType:'expense',dayReview:'',weekReview:'',monthReview:'',learnNotes:'',chartMode:'month'};
-function loadState(){try{const r=localStorage.getItem(SK+today);if(r)state={...state,...JSON.parse(r)};}catch(e){}}
-function saveState(){try{localStorage.setItem(SK+today,JSON.stringify(state));}catch(e){}}
+function loadState(){try{const r=localStorage.getItem(SK+today);if(r)state={...state,...JSON.parse(r)};const b=localStorage.getItem(BILL_KEY);if(b)state.bills=JSON.parse(b);}catch(e){}}
+function saveState(){try{localStorage.setItem(SK+today,JSON.stringify(state));localStorage.setItem(BILL_KEY,JSON.stringify(state.bills||[]));}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
