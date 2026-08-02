@@ -328,9 +328,20 @@ textarea.input{resize:vertical;min-height:42px}
 <div class="page" id="page-dayreview">
 <div class="content-header"><h2><span>📊</span> 复盘</h2></div>
 <div class="section-desc">每日/每周/每月复盘，总结得失</div>
-<div class="card"><div class="card-title">📝 今日复盘</div><textarea class="input" id="dayReviewInput" rows="5" placeholder="今天做了什么？哪里可以改进？" oninput="saveDayReview()"></textarea></div>
-<div class="card"><div class="card-title">📅 本周复盘</div><textarea class="input" id="weekReviewInput" rows="5" placeholder="这周完成了什么？下周计划？" oninput="saveWeekReview()"></textarea></div>
-<div class="card"><div class="card-title">📆 本月复盘</div><textarea class="input" id="monthReviewInput" rows="5" placeholder="这个月有哪些成果？下个月目标？" oninput="saveMonthReview()"></textarea></div>
+<div class="card"><div class="card-title">📝 今日复盘 <span style="font-size:12px;color:#999;font-weight:400" id="todayLabel"></span></div><textarea class="input" id="dayReviewInput" rows="5" placeholder="今天做了什么？哪里可以改进？" oninput="saveDayReview()"></textarea></div>
+<div class="card"><div class="card-title">📅 本周复盘</div><textarea class="input" id="weekReviewInput" rows="4" placeholder="这周完成了什么？下周计划？" oninput="saveWeekReview()"></textarea></div>
+<div class="card"><div class="card-title">📆 本月复盘</div><textarea class="input" id="monthReviewInput" rows="4" placeholder="这个月有哪些成果？下个月目标？" oninput="saveMonthReview()"></textarea></div>
+<div class="card">
+<div class="card-title">🗓️ 复盘日历</div>
+<div class="section-desc" style="margin-bottom:10px">点击有内容的日期查看历史复盘</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+<button class="btn btn-sm" onclick="changeReviewMonth(-1)">◀</button>
+<span id="reviewMonthLabel" style="font-weight:600;font-size:14px"></span>
+<button class="btn btn-sm" onclick="changeReviewMonth(1)">▶</button>
+</div>
+<div id="reviewCalendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center"></div>
+<div id="reviewDetail" style="margin-top:12px;display:none;padding:12px;background:var(--primary-light);border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+</div>
 </div>
 
 <div class="page" id="page-finance">
@@ -355,16 +366,17 @@ function switchPage(p){
     const si=document.querySelector(`.nav-sub-item[data-page="${p}"]`);
     if(si){const cat=si.closest('.nav-sub')?.previousElementSibling;if(cat)cat.classList.add('open');}
   }
-  if(p==='finance')renderYearChart();if(p==='bill')renderBillChart();
+  if(p==='finance')renderYearChart();if(p==='bill')renderBillChart();if(p==='dayreview')renderReviewCalendar();
   document.querySelector('.content')?.scrollTo(0,0);
 }
 // 移动端导航
 const mobileNavItems=[{page:'plan',label:'📋计划'},{page:'inspiration',label:'💡选题'},{page:'hot',label:'🔥热点'},{page:'review',label:'📊复盘'},{page:'ai',label:'🤖AI'},{page:'luca',label:'🔬拆解'},{page:'manual',label:'📖手册'},{page:'bill',label:'💰记账'},{page:'memo',label:'📝备忘'},{page:'learn',label:'📚学习'},{page:'dayreview',label:'📊日复盘'},{page:'finance',label:'💰财务'}];
 function initMobileNav(){const nav=document.getElementById('mobileNav');nav.innerHTML=mobileNavItems.map(i=>`<button class="mobile-nav-item" data-page="${i.page}" onclick="switchPage('${i.page}')">${i.label}</button>`).join('');}
-const SK='wbs_v3_';const BILL_KEY='wbs_bills_global';let today=new Date().toISOString().slice(0,10);
+const SK='wbs_v3_';const BILL_KEY='wbs_bills_global';const REVIEW_KEY='wbs_reviews_global';let today=new Date().toISOString().slice(0,10);
 let state={date:today,mainTasks:[],subTasks:[],subInitDate:'',memos:[],dataItems:[],review:'',savedQuotes:[],quoteIdx:0,quoteDate:'',inspirationDate:'',inspirationIdx:[],bills:[],billType:'expense',dayReview:'',weekReview:'',monthReview:'',learnNotes:'',chartMode:'month'};
-function loadState(){try{const r=localStorage.getItem(SK+today);if(r)state={...state,...JSON.parse(r)};const b=localStorage.getItem(BILL_KEY);if(b)state.bills=JSON.parse(b);}catch(e){}}
-function saveState(){try{localStorage.setItem(SK+today,JSON.stringify(state));localStorage.setItem(BILL_KEY,JSON.stringify(state.bills||[]));}catch(e){}}
+let reviews={};let reviewCalDate=new Date();
+function loadState(){try{const r=localStorage.getItem(SK+today);if(r)state={...state,...JSON.parse(r)};const b=localStorage.getItem(BILL_KEY);if(b)state.bills=JSON.parse(b);const rv=localStorage.getItem(REVIEW_KEY);if(rv)reviews=JSON.parse(rv);}catch(e){}}
+function saveState(){try{localStorage.setItem(SK+today,JSON.stringify(state));localStorage.setItem(BILL_KEY,JSON.stringify(state.bills||[]));reviews[today]={day:state.dayReview||'',week:state.weekReview||'',month:state.monthReview||'',updatedAt:Date.now()};localStorage.setItem(REVIEW_KEY,JSON.stringify(reviews));}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -447,9 +459,37 @@ function copyResult(tool){const text=window['_lastResult_'+tool]||'';navigator.c
 function saveToMemo(tool){const text=window['_lastResult_'+tool]||'';if(!text)return;state.memos.push({id:uid(),text:'[AI生成] '+text.slice(0,200)+(text.length>200?'...':''),used:false,createdAt:Date.now()});saveState();renderMemos();showToast('已存入备忘');}
 
 // 复盘
-function saveDayReview(){state.dayReview=document.getElementById('dayReviewInput').value;saveState()}
+function saveDayReview(){state.dayReview=document.getElementById('dayReviewInput').value;saveState();renderReviewCalendar()}
 function saveWeekReview(){state.weekReview=document.getElementById('weekReviewInput').value;saveState()}
 function saveMonthReview(){state.monthReview=document.getElementById('monthReviewInput').value;saveState()}
+function changeReviewMonth(d){reviewCalDate.setMonth(reviewCalDate.getMonth()+d);renderReviewCalendar()}
+function renderReviewCalendar(){
+const y=reviewCalDate.getFullYear();const m=reviewCalDate.getMonth();
+document.getElementById('reviewMonthLabel').textContent=y+'年'+(m+1)+'月';
+const first=new Date(y,m,1);const last=new Date(y,m+1,0);const startDay=first.getDay();const daysInMonth=last.getDate();
+const weekDays=['日','一','二','三','四','五','六'];
+let html=weekDays.map(d=>`<div style="font-size:11px;color:#999;padding:2px 0;font-weight:600">${d}</div>`).join('');
+for(let i=0;i<startDay;i++)html+=`<div></div>`;
+for(let d=1;d<=daysInMonth;d++){
+const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+const hasReview=reviews[ds]&&reviews[ds].day&&reviews[ds].day.trim();
+const isToday=ds===today;
+const cls=hasReview?'background:var(--primary);color:#fff':'background:var(--bg)';
+const todayCls=isToday?'border:2px solid var(--primary)':'';
+html+=`<div onclick="showReviewDetail('${ds}')" style="padding:6px 2px;border-radius:6px;font-size:12px;cursor:pointer;${cls};${todayCls};min-height:28px">${d}</div>`;
+}
+document.getElementById('reviewCalendar').innerHTML=html;
+}
+function showReviewDetail(ds){
+const r=reviews[ds];
+const el=document.getElementById('reviewDetail');
+if(!r||!r.day||!r.day.trim()){el.style.display='block';el.innerHTML='<strong>'+ds+'</strong><br><span style="color:#999">这天没有复盘记录</span>';return}
+let html='<strong>📅 '+ds+'</strong>';
+if(r.day)html+='\n\n📝 日复盘：\n'+r.day;
+if(r.week)html+='\n\n📅 周复盘：\n'+r.week;
+if(r.month)html+='\n\n📆 月复盘：\n'+r.month;
+el.style.display='block';el.textContent=html;
+}
 function saveLearnNotes(){state.learnNotes=document.getElementById('learnNotes').value;saveState()}
 
 // 初始化
@@ -466,6 +506,8 @@ if(state.review)document.getElementById('reviewInput').value=state.review;
 if(state.dayReview)document.getElementById('dayReviewInput').value=state.dayReview;
 if(state.weekReview)document.getElementById('weekReviewInput').value=state.weekReview;
 if(state.monthReview)document.getElementById('monthReviewInput').value=state.monthReview;
+document.getElementById('todayLabel').textContent='（'+today+'）';
+renderReviewCalendar();
 if(state.learnNotes)document.getElementById('learnNotes').value=state.learnNotes;
 document.getElementById('memoInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'});
 // PWA: Service Worker 注册
