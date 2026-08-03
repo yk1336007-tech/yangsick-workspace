@@ -332,15 +332,17 @@ textarea.input{resize:vertical;min-height:42px}
 <div class="card"><div class="card-title">📅 本周复盘</div><textarea class="input" id="weekReviewInput" rows="4" placeholder="这周完成了什么？下周计划？" oninput="saveWeekReview()"></textarea></div>
 <div class="card"><div class="card-title">📆 本月复盘</div><textarea class="input" id="monthReviewInput" rows="4" placeholder="这个月有哪些成果？下个月目标？" oninput="saveMonthReview()"></textarea></div>
 <div class="card">
-<div class="card-title">🗓️ 复盘日历</div>
-<div class="section-desc" style="margin-bottom:10px">点击有内容的日期查看历史复盘</div>
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-<button class="btn btn-sm" onclick="changeReviewMonth(-1)">◀</button>
-<span id="reviewMonthLabel" style="font-weight:600;font-size:14px"></span>
-<button class="btn btn-sm" onclick="changeReviewMonth(1)">▶</button>
+<div class="card-title">🗓️ 复盘记录</div>
+<div class="section-desc" style="margin-bottom:10px">所有历史复盘记录</div>
+<div id="reviewHistoryList"></div>
 </div>
-<div id="reviewCalendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center"></div>
-<div id="reviewDetail" style="margin-top:12px;display:none;padding:12px;background:var(--primary-light);border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+<div class="card">
+<div class="card-title">💾 数据备份</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button class="btn btn-primary" onclick="exportData()">📤 导出全部数据</button>
+<button class="btn btn-sm" onclick="importData()">📥 导入数据</button>
+</div>
+<div class="section-desc" style="margin-top:8px;font-size:12px">换手机时导出 JSON 文件，新手机上导入即可恢复所有数据</div>
 </div>
 </div>
 
@@ -374,7 +376,7 @@ const mobileNavItems=[{page:'plan',label:'📋计划'},{page:'inspiration',label
 function initMobileNav(){const nav=document.getElementById('mobileNav');nav.innerHTML=mobileNavItems.map(i=>`<button class="mobile-nav-item" data-page="${i.page}" onclick="switchPage('${i.page}')">${i.label}</button>`).join('');}
 const SK='wbs_v3_';const BILL_KEY='wbs_bills_global';const REVIEW_KEY='wbs_reviews_global';let today=new Date().toISOString().slice(0,10);
 let state={date:today,mainTasks:[],subTasks:[],subInitDate:'',memos:[],dataItems:[],review:'',savedQuotes:[],quoteIdx:0,quoteDate:'',inspirationDate:'',inspirationIdx:[],bills:[],billType:'expense',dayReview:'',weekReview:'',monthReview:'',learnNotes:'',chartMode:'month'};
-let reviews={};let reviewCalDate=new Date();
+let reviews={};
 function loadState(){try{const r=localStorage.getItem(SK+today);if(r)state={...state,...JSON.parse(r)};const b=localStorage.getItem(BILL_KEY);if(b)state.bills=JSON.parse(b);const rv=localStorage.getItem(REVIEW_KEY);if(rv)reviews=JSON.parse(rv);}catch(e){}}
 function saveState(){try{localStorage.setItem(SK+today,JSON.stringify(state));localStorage.setItem(BILL_KEY,JSON.stringify(state.bills||[]));reviews[today]={day:state.dayReview||'',week:state.weekReview||'',month:state.monthReview||'',updatedAt:Date.now()};localStorage.setItem(REVIEW_KEY,JSON.stringify(reviews));}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
@@ -462,33 +464,17 @@ function saveToMemo(tool){const text=window['_lastResult_'+tool]||'';if(!text)re
 function saveDayReview(){state.dayReview=document.getElementById('dayReviewInput').value;saveState();renderReviewCalendar()}
 function saveWeekReview(){state.weekReview=document.getElementById('weekReviewInput').value;saveState()}
 function saveMonthReview(){state.monthReview=document.getElementById('monthReviewInput').value;saveState()}
-function changeReviewMonth(d){reviewCalDate.setMonth(reviewCalDate.getMonth()+d);renderReviewCalendar()}
 function renderReviewCalendar(){
-const y=reviewCalDate.getFullYear();const m=reviewCalDate.getMonth();
-document.getElementById('reviewMonthLabel').textContent=y+'年'+(m+1)+'月';
-const first=new Date(y,m,1);const last=new Date(y,m+1,0);const startDay=first.getDay();const daysInMonth=last.getDate();
-const weekDays=['日','一','二','三','四','五','六'];
-let html=weekDays.map(d=>`<div style="font-size:11px;color:#999;padding:2px 0;font-weight:600">${d}</div>`).join('');
-for(let i=0;i<startDay;i++)html+=`<div></div>`;
-for(let d=1;d<=daysInMonth;d++){
-const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-const hasReview=reviews[ds]&&reviews[ds].day&&reviews[ds].day.trim();
-const isToday=ds===today;
-const cls=hasReview?'background:var(--primary);color:#fff':'background:var(--bg)';
-const todayCls=isToday?'border:2px solid var(--primary)':'';
-html+=`<div onclick="showReviewDetail('${ds}')" style="padding:6px 2px;border-radius:6px;font-size:12px;cursor:pointer;${cls};${todayCls};min-height:28px">${d}</div>`;
-}
-document.getElementById('reviewCalendar').innerHTML=html;
-}
-function showReviewDetail(ds){
-const r=reviews[ds];
-const el=document.getElementById('reviewDetail');
-if(!r||!r.day||!r.day.trim()){el.style.display='block';el.innerHTML='<strong>'+ds+'</strong><br><span style="color:#999">这天没有复盘记录</span>';return}
-let html='<strong>📅 '+ds+'</strong>';
-if(r.day)html+='\n\n📝 日复盘：\n'+r.day;
-if(r.week)html+='\n\n📅 周复盘：\n'+r.week;
-if(r.month)html+='\n\n📆 月复盘：\n'+r.month;
-el.style.display='block';el.textContent=html;
+const entries=Object.entries(reviews).filter(([k,v])=>v&&v.day&&v.day.trim()).sort((a,b)=>b[0].localeCompare(a[0]));
+const el=document.getElementById('reviewHistoryList');
+if(entries.length===0){el.innerHTML='<div class="empty-state"><span class="emoji">📊</span>还没有复盘记录</div>';return}
+el.innerHTML=entries.map(([ds,r])=>{
+let content='';
+if(r.day&&r.day.trim())content+='<div style="margin-top:6px"><span style="color:var(--primary);font-weight:600">📝 日复盘</span><div style="margin-top:2px;white-space:pre-wrap">'+esc(r.day)+'</div></div>';
+if(r.week&&r.week.trim())content+='<div style="margin-top:6px"><span style="color:#D97706;font-weight:600">📅 周复盘</span><div style="margin-top:2px;white-space:pre-wrap">'+esc(r.week)+'</div></div>';
+if(r.month&&r.month.trim())content+='<div style="margin-top:6px"><span style="color:#7C3AED;font-weight:600">📆 月复盘</span><div style="margin-top:2px;white-space:pre-wrap">'+esc(r.month)+'</div></div>';
+return `<div style="padding:14px;background:var(--bg);border-radius:10px;margin-bottom:10px;border-left:3px solid var(--primary)"><div style="font-weight:700;font-size:14px;color:var(--text)">📅 ${ds}</div>${content}</div>`;
+}).join('');
 }
 function saveLearnNotes(){state.learnNotes=document.getElementById('learnNotes').value;saveState()}
 
@@ -512,6 +498,20 @@ if(state.learnNotes)document.getElementById('learnNotes').value=state.learnNotes
 document.getElementById('memoInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'});
 // PWA: Service Worker 注册
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{const swCode=`const C='wbs-v1';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./index.html'])).then(()=>self.skipWaiting()))});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))});`;const blob=new Blob([swCode],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err=>console.warn('SW:',err));});}
+
+// 数据导出/导入（换手机用）
+function exportData(){
+const data={};
+for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('wbs_'))data[k]=localStorage.getItem(k);}
+const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');a.href=url;a.download='杨Sick数据备份_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);showToast('数据已导出');
+}
+function importData(){
+const input=document.createElement('input');input.type='file';input.accept='.json';
+input.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const data=JSON.parse(ev.target.result);Object.entries(data).forEach(([k,v])=>localStorage.setItem(k,v));loadState();location.reload();}catch(err){showToast('导入失败：文件格式错误');}};r.readAsText(f);};
+input.click();
+}
 </script>
 </body>
 </html>
