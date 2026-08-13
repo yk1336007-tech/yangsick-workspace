@@ -15,7 +15,7 @@
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#F5F5F0;--sidebar:#FFFFFF;--card:#FFFFFF;--primary:#5B8C5A;--primary-dark:#4A7A49;--primary-light:#E8F0E8;--text:#2C2C2C;--text-light:#888;--border:#E8E8E4;--shadow:0 1px 4px rgba(0,0,0,0.06);--radius:14px}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;height:100vh;overflow:hidden}
-.app{display:flex;height:100vh;width:100vw}
+.app{display:flex;height:100vh;width:100vw;position:relative}
 .sidebar{width:220px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;padding:20px 0 12px;overflow-y:auto}
 .sidebar-brand{padding:0 16px 16px;border-bottom:1px solid var(--border);margin-bottom:8px}
 .sidebar-brand h1{font-size:18px;font-weight:700;color:var(--primary)}
@@ -179,18 +179,25 @@ textarea.input{resize:vertical;min-height:42px}
 .profile-banner .info h3{font-size:15px;font-weight:700}
 .profile-banner .info p{font-size:11px;opacity:0.9}
 @media(max-width:768px){
-.app{flex-direction:column;height:100vh}
-.sidebar{display:flex;width:100%;height:auto;flex-direction:row;flex-shrink:0;padding:0;border-right:none;border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+*{transition:none!important;animation:none!important}
+.app{flex-direction:row;height:100vh}
+.sidebar{display:flex;width:88px;height:100%;flex-direction:column;flex-shrink:0;padding:10px 0;border-right:1px solid var(--border);border-bottom:none;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .sidebar::-webkit-scrollbar{display:none}
-.sidebar-brand{display:none}
+.sidebar-brand{display:block;padding:0 8px 10px;text-align:center}
+.sidebar-brand h1{font-size:13px}
+.sidebar-brand p{display:none}
 .sidebar-footer{display:none}
-.nav-category{padding:10px 8px;white-space:nowrap;font-size:13px}
-.nav-category span:not(.cat-icon):not(.cat-arrow){display:inline}
-.nav-sub{display:none!important;max-height:none}
-.nav-item-solo{padding:10px 10px;white-space:nowrap;font-size:13px}
-.nav-item-solo span:not(.solo-icon){display:inline}
-.nav-item-solo .solo-icon{font-size:16px;width:auto}
-.content{flex:1;padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.nav-category{flex-direction:column;padding:10px 4px;text-align:center;font-size:11px;line-height:1.3;gap:2px;white-space:normal}
+.nav-category .cat-icon{font-size:18px;margin-bottom:2px}
+.nav-category span:not(.cat-icon){display:block}
+.nav-category .cat-arrow{display:none}
+.nav-sub{position:absolute;left:88px;top:0;bottom:0;background:#fff;width:150px;display:none;padding:12px 0;border-left:1px solid var(--border);box-shadow:2px 0 8px rgba(0,0,0,0.06);z-index:100;max-height:none;overflow-y:auto}
+.nav-category.open+.nav-sub,.nav-sub.open{display:block}
+.nav-item-solo{flex-direction:column;padding:10px 4px;text-align:center;font-size:11px;line-height:1.3;gap:2px;white-space:normal}
+.nav-item-solo .solo-icon{font-size:18px;width:auto;margin-bottom:2px}
+.nav-item-solo span:not(.solo-icon){display:block;font-size:11px}
+.nav-sub-item{justify-content:flex-start;padding:9px 14px}
+.content{flex:1;padding:12px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .insp-grid,.ai-grid,.learn-grid,.bill-stats{grid-template-columns:1fr}
 }
 .mobile-nav{display:none!important}
@@ -354,8 +361,9 @@ function switchPage(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   const pg=document.getElementById('page-'+p);if(pg){pg.classList.add('active');
     const si=document.querySelector(`.nav-sub-item[data-page="${p}"]`);
-    if(si){const cat=si.closest('.nav-sub')?.previousElementSibling;if(cat)cat.classList.add('open');}
+    if(si){const cat=si.closest('.nav-sub')?.previousElementSibling;if(cat&&window.innerWidth>768)cat.classList.add('open');}
   }
+  if(window.innerWidth<=768)document.querySelectorAll('.nav-category').forEach(c=>c.classList.remove('open'));
   if(p==='finance')renderYearChart();if(p==='bill')renderBillChart();if(p==='dayreview')renderReviewCalendar();
   document.querySelector('.content')?.scrollTo(0,0);
 }
